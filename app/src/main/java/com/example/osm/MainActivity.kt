@@ -1,6 +1,9 @@
 package com.example.osm
 
 
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
 import android.graphics.Canvas
 import android.os.Bundle
 import android.util.Log
@@ -17,10 +20,12 @@ import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.OverlayItem
 
 
-class MainActivity : AppCompatActivity(),MapEventsReceiver {
+open class MainActivity : AppCompatActivity(),MapEventsReceiver {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        startLocationService()
 
         Configuration.getInstance().load(this, androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
 
@@ -31,11 +36,11 @@ class MainActivity : AppCompatActivity(),MapEventsReceiver {
         val mapController = map.controller
         mapController.setZoom(18.0)
         mapController.setCenter(GeoPoint(36.75299685157714, 3.0048393458673694))
-        var touchOverlay: Overlay = object : Overlay(this) {
+        val touchOverlay: Overlay = object : Overlay(this) {
             var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
             override fun draw(arg0: Canvas?, arg1: MapView?, arg2: Boolean) {}
             override fun onSingleTapConfirmed(e: MotionEvent, mapView: MapView): Boolean {
-                val marker = applicationContext.resources.getDrawable(R.drawable.ic_launcher_background)
+                val marker = getDrawable(R.drawable.ic_location)
                 val proj = mapView.projection
                 val loc = proj.fromPixels(e.x.toInt(), e.y.toInt()) as GeoPoint
                 val longitude = java.lang.Double.toString(loc.longitudeE6.toDouble() / 1000000)
@@ -59,7 +64,6 @@ class MainActivity : AppCompatActivity(),MapEventsReceiver {
                     mapView.overlays.add(anotherItemizedIconOverlay)
                     mapView.invalidate()
                 } else {
-                    mapView.overlays.remove(anotherItemizedIconOverlay)
                     mapView.invalidate()
                     anotherItemizedIconOverlay =
                         ItemizedIconOverlay(applicationContext, overlayArray, null)
@@ -82,5 +86,34 @@ class MainActivity : AppCompatActivity(),MapEventsReceiver {
         Toast.makeText(this,p?.latitude.toString()+""+p?.longitude.toString(),Toast.LENGTH_SHORT).show()
         return false
     }
+     fun isLocationServiceRunning(): Boolean {
+        val activityManager =
+            applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        if (activityManager != null) {
+            for (service in activityManager.getRunningServices(Int.MAX_VALUE)) {
+                if (LocationService::class.java.name == service.service.className) {
+                    if (service.foreground) {
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+        return false
+    }
 
+    private fun startLocationService() {
+        if (!isLocationServiceRunning()) {
+            Toast.makeText(this, "Start location service", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, LocationService::class.java)
+            intent.action = Constants.ACTION_START_LOCATION_SERVICE
+            startService(intent)
+        }
+    }
+
+    fun stopLocationService() {
+        val intent = Intent(applicationContext, LocationService::class.java)
+        intent.action = Constants.ACTION_STOP_LOCATION_SERVICE
+        applicationContext.startService(intent)
+    }
 }
