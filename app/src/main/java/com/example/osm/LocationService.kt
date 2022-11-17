@@ -1,6 +1,4 @@
 package com.example.osm
-
-import android.R
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -14,12 +12,13 @@ import android.os.Looper
 import android.widget.Toast
 import androidx.annotation.Nullable
 import androidx.core.app.NotificationCompat
+import com.example.osm.Interfaces.OnLocationChangeListener
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 
-
+var onLocationChangeListener:OnLocationChangeListener? = null
 class LocationService : Service() {
     private val locationCallback: LocationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
@@ -30,6 +29,7 @@ class LocationService : Service() {
                 applicationContext,
                 "Longitude -> $longitude Latitude -> $latitude", Toast.LENGTH_SHORT
             ).show()
+            onLocationChangeListener?.onLocationChange(longitude.toString() ,latitude.toString())
         }
     }
 
@@ -43,7 +43,7 @@ class LocationService : Service() {
             applicationContext, 0, arrayOf(resultIntent), PendingIntent.FLAG_UPDATE_CURRENT
         )
         val builder = NotificationCompat.Builder(applicationContext, channelId)
-        builder.setSmallIcon(R.drawable.ic_notification_overlay)
+        builder.setSmallIcon(R.drawable.ic_launcher_background)
             .setContentTitle("Location Service")
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
@@ -95,5 +95,8 @@ class LocationService : Service() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    fun onLocationChange(onLocationChange: OnLocationChangeListener){
+        onLocationChangeListener = onLocationChange
+    }
 
 }

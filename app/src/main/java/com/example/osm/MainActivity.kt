@@ -4,17 +4,20 @@ package com.example.osm
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Point
 import android.os.Bundle
-import android.util.Log
 import android.view.MotionEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.osm.Interfaces.OnLocationChangeListener
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.GroundOverlay
 import org.osmdroid.views.overlay.ItemizedIconOverlay
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.OverlayItem
@@ -25,7 +28,12 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val overlayArray = ArrayList<OverlayItem>()
+
+        val locationService = LocationService()
+
         startLocationService()
+
 
         Configuration.getInstance().load(this, androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
 
@@ -33,48 +41,69 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setBuiltInZoomControls(true)
         map.setMultiTouchControls(true)
+
         val mapController = map.controller
-        mapController.setZoom(18.0)
-        mapController.setCenter(GeoPoint(36.75299685157714, 3.0048393458673694))
-        val touchOverlay: Overlay = object : Overlay(this) {
+        val touchOverlay: Overlay = object : GroundOverlay() {
             var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
-            override fun draw(arg0: Canvas?, arg1: MapView?, arg2: Boolean) {}
+            override fun draw(arg0: Canvas?, arg1: MapView?, arg2: Boolean) {
+                if (overlayArray.isNotEmpty()) {
+
+                    //overlayItemArray have only ONE element only, so I hard code to get(0)
+                    val `in`: GeoPoint = overlayArray[0].point as GeoPoint
+                    val out = Point()
+                    arg1!!.projection.toPixels(`in`, out)
+                    val bm = BitmapFactory.decodeResource(
+                        resources,
+                        R.drawable.ic_location
+                    )
+                    Canvas().drawBitmap(
+                        bm,
+                        (out.x - bm.width / 2).toFloat(),  //shift the bitmap center
+                        (out.y - bm.height / 2).toFloat(),  //shift the bitmap center
+                        null
+                    )
+                }
+            }
             override fun onSingleTapConfirmed(e: MotionEvent, mapView: MapView): Boolean {
                 val marker = getDrawable(R.drawable.ic_location)
-                val proj = mapView.projection
-                val loc = proj.fromPixels(e.x.toInt(), e.y.toInt()) as GeoPoint
-                val longitude = java.lang.Double.toString(loc.longitudeE6.toDouble() / 1000000)
-                val latitude = java.lang.Double.toString(loc.latitudeE6.toDouble() / 1000000)
 
-                Toast.makeText(baseContext,longitude+""+latitude,Toast.LENGTH_SHORT).show()
 
-                Log.d("CurrentLocation",longitude+""+latitude)
-                val overlayArray = ArrayList<OverlayItem>()
-                val mapItem = OverlayItem(
-                    "", "", GeoPoint(
-                        loc.latitudeE6.toDouble() / 1000000,
-                        loc.longitudeE6.toDouble() / 1000000
-                    )
-                )
-                mapItem.setMarker(marker)
-                overlayArray.add(mapItem)
-                if (anotherItemizedIconOverlay == null) {
-                    anotherItemizedIconOverlay =
-                        ItemizedIconOverlay(applicationContext, overlayArray, null)
-                    mapView.overlays.add(anotherItemizedIconOverlay)
-                    mapView.invalidate()
-                } else {
-                    mapView.invalidate()
-                    anotherItemizedIconOverlay =
-                        ItemizedIconOverlay(applicationContext, overlayArray, null)
-                    mapView.overlays.add(anotherItemizedIconOverlay)
-                }
+//                val mapItem = OverlayItem(
+//                    "", "", GeoPoint(
+//                        loc.latitudeE6.toDouble() / 1000000,
+//                        loc.longitudeE6.toDouble() / 1000000
+//                    )
+//                )
+//                mapItem.setMarker(marker)
+//                overlayArray.add(mapItem)
+//                if (anotherItemizedIconOverlay == null) {
+//                    anotherItemizedIconOverlay =
+//                        ItemizedIconOverlay(applicationContext, overlayArray, null)
+//                    mapView.overlays.add(anotherItemizedIconOverlay)
+//                    mapView.invalidate()
+//                } else {
+//                    mapView.invalidate()
+//                    anotherItemizedIconOverlay =
+//                        ItemizedIconOverlay(applicationContext, overlayArray, null)
+//                    mapView.overlays.add(anotherItemizedIconOverlay)
+//                }
                 //      dlgThread();
                 return true
             }
         }
 
         map.overlays.add(touchOverlay)
+        locationService.onLocationChange(object :OnLocationChangeListener{
+            override fun onLocationChange(long:String ,lat:String) {
+                mapController.setCenter(GeoPoint(lat.toDouble(), long.toDouble()))
+
+                mapController.setZoom(18.0)
+                overlayArray.clear()
+                overlayArray.add(OverlayItem("","",GeoPoint(lat.toDouble() ,long.toDouble())))
+//                Toast.makeText(this@MainActivity ,geoLocation ,Toast.LENGTH_SHORT).show()
+            }
+        })
+
 
     }
 
