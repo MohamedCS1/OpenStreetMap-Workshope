@@ -1,13 +1,15 @@
 package com.example.osm
 
-
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.PackageStats
 import android.net.Uri
 import android.os.Bundle
+import android.os.RemoteException
 import android.provider.Settings
+import android.view.MotionEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -16,19 +18,23 @@ import com.example.osm.Interfaces.OnLocationChangeListener
 import com.example.osm.databinding.ActivityMainBinding
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.dynamic.IObjectWrapper
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
+import org.osmdroid.bonuspack.routing.OSRMRoadManager
+import org.osmdroid.bonuspack.routing.RoadManager
 import org.osmdroid.config.Configuration
-import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.GroundOverlay
 import org.osmdroid.views.overlay.ItemizedIconOverlay
 import org.osmdroid.views.overlay.OverlayItem
+import java.lang.reflect.Method
 
 
-open class MainActivity : AppCompatActivity(),MapEventsReceiver {
+open class MainActivity : AppCompatActivity() {
 
     lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,51 +42,87 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        var startPoint = GeoPoint(36.712051 ,3.113417)
+
+        val map = findViewById<MapView>(R.id.mapView)
+
+        val overlayArray = ArrayList<OverlayItem>()
+
+        val overlay = object : GroundOverlay() {
+            override fun onSingleTapConfirmed(e: MotionEvent?, mapView: MapView?): Boolean {
+                Toast.makeText(this@MainActivity ,"Single Click" ,Toast.LENGTH_SHORT).show()
+                val thread = Thread {
+                    try {
+                        val roadManager: RoadManager = OSRMRoadManager(baseContext ,"userAgent")
+
+                        val projection = mapView?.projection
+                        val loc = projection?.fromPixels(e!!.x.toInt(), e.y.toInt()) as GeoPoint
+
+                        val waypoints = ArrayList<GeoPoint>()
+                        waypoints.add(startPoint)
+
+                        val endPoint = GeoPoint(loc.latitude ,loc.longitude)
+                        waypoints.add(endPoint)
+
+
+
+                        val road = roadManager.getRoad(waypoints)
+
+                        val roadOverlay = RoadManager.buildRoadOverlay(road)
+
+
+                        map.overlays.add(roadOverlay)
+
+
+                        map.invalidate()
+                    } catch (e: java.lang.Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                thread.start();
+
+                return super.onSingleTapConfirmed(e, mapView)
+            }
+        }
+
+        map.overlays.add(overlay)
+        map.invalidate()
 
         binding.myLocation.setOnClickListener {
             checkGpsPermission()
         }
 
-        val overlayArray = ArrayList<OverlayItem>()
+
+        map.setTileSource(TileSourceFactory.MAPNIK)
+        map.setMultiTouchControls(true)
+        map.setBuiltInZoomControls(true)
 
 
         val locationService = LocationService()
 
         Configuration.getInstance().load(this, androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
 
-        val map = findViewById<MapView>(R.id.mapView)
-        map.setTileSource(TileSourceFactory.MAPNIK)
-        map.setBuiltInZoomControls(true)
-        map.setMultiTouchControls(true)
-        val mapController = map.controller
+
+
+        var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
 
         locationService.onLocationChange(object :OnLocationChangeListener{
             override fun onLocationChange(long:String ,lat:String) {
-//                mapController.setCenter(GeoPoint(lat.toDouble(), long.toDouble()))
 
-//                mapController.setZoom(18.0)
                 overlayArray.clear()
-                overlayArray.add(OverlayItem("","",GeoPoint(lat.toDouble() ,long.toDouble())))
+
+                startPoint = GeoPoint(lat.toDouble() ,long.toDouble())
 
                 val marker = getDrawable(R.drawable.ic_location)
-
-                var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
-
-                val mapItem = OverlayItem(
-                    "", "", GeoPoint(
-                        lat.toDouble() / 1000000,
-                        long.toDouble() / 1000000
-                    )
-                )
+                anotherItemizedIconOverlay?.removeAllItems()
+                val mapItem = OverlayItem("", "", GeoPoint(lat.toDouble() , long.toDouble()))
                 mapItem.setMarker(marker)
                 overlayArray.add(mapItem)
                 if (anotherItemizedIconOverlay == null) {
-                    map.overlays.clear()
                     anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
                     map.overlays.add(anotherItemizedIconOverlay)
                     map.invalidate()
                 } else {
-                    map.overlays.clear()
                     anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
                     map.overlays.add(anotherItemizedIconOverlay)
                     map.invalidate()
@@ -91,6 +133,7 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
 
 
     }
+
 
     fun dialogGps()
     {
@@ -129,14 +172,7 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
             }
         })
     }
-    override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-        return true
-    }
 
-    override fun longPressHelper(p: GeoPoint?): Boolean {
-        Toast.makeText(this,p?.latitude.toString()+""+p?.longitude.toString(),Toast.LENGTH_SHORT).show()
-        return false
-    }
      fun isLocationServiceRunning(): Boolean {
         val activityManager =
             applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
