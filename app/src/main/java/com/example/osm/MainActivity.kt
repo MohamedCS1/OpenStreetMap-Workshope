@@ -5,14 +5,9 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Point
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.view.MotionEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -29,9 +24,7 @@ import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.GroundOverlay
 import org.osmdroid.views.overlay.ItemizedIconOverlay
-import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.OverlayItem
 
 
@@ -59,65 +52,40 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setBuiltInZoomControls(true)
         map.setMultiTouchControls(true)
-
         val mapController = map.controller
-        val touchOverlay: Overlay = object : GroundOverlay() {
-            var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
-            override fun draw(arg0: Canvas?, arg1: MapView?, arg2: Boolean) {
-                if (overlayArray.isNotEmpty()) {
 
-                    val `in`: GeoPoint = overlayArray[0].point as GeoPoint
-                    val out = Point()
-                    arg1!!.projection.toPixels(`in`, out)
-                    val bm = BitmapFactory.decodeResource(
-                        resources,
-                        R.drawable.ic_location
-                    )
-                    Canvas().drawBitmap(
-                        bm,
-                        (out.x - bm.width / 2).toFloat(),
-                        (out.y - bm.height / 2).toFloat(),  //shift the bitmap center
-                        null
-                    )
-                }
-            }
-            override fun onSingleTapConfirmed(e: MotionEvent, mapView: MapView): Boolean {
-                val marker = getDrawable(R.drawable.ic_location)
-
-
-//                val mapItem = OverlayItem(
-//                    "", "", GeoPoint(
-//                        loc.latitudeE6.toDouble() / 1000000,
-//                        loc.longitudeE6.toDouble() / 1000000
-//                    )
-//                )
-//                mapItem.setMarker(marker)
-//                overlayArray.add(mapItem)
-//                if (anotherItemizedIconOverlay == null) {
-//                    anotherItemizedIconOverlay =
-//                        ItemizedIconOverlay(applicationContext, overlayArray, null)
-//                    mapView.overlays.add(anotherItemizedIconOverlay)
-//                    mapView.invalidate()
-//                } else {
-//                    mapView.invalidate()
-//                    anotherItemizedIconOverlay =
-//                        ItemizedIconOverlay(applicationContext, overlayArray, null)
-//                    mapView.overlays.add(anotherItemizedIconOverlay)
-//                }
-                //      dlgThread();
-                return true
-            }
-        }
-
-        map.overlays.add(touchOverlay)
         locationService.onLocationChange(object :OnLocationChangeListener{
             override fun onLocationChange(long:String ,lat:String) {
-                mapController.setCenter(GeoPoint(lat.toDouble(), long.toDouble()))
+//                mapController.setCenter(GeoPoint(lat.toDouble(), long.toDouble()))
 
-                mapController.setZoom(18.0)
+//                mapController.setZoom(18.0)
                 overlayArray.clear()
                 overlayArray.add(OverlayItem("","",GeoPoint(lat.toDouble() ,long.toDouble())))
-//                Toast.makeText(this@MainActivity ,geoLocation ,Toast.LENGTH_SHORT).show()
+
+                val marker = getDrawable(R.drawable.ic_location)
+
+                var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
+
+                val mapItem = OverlayItem(
+                    "", "", GeoPoint(
+                        lat.toDouble() / 1000000,
+                        long.toDouble() / 1000000
+                    )
+                )
+                mapItem.setMarker(marker)
+                overlayArray.add(mapItem)
+                if (anotherItemizedIconOverlay == null) {
+                    map.overlays.clear()
+                    anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
+                    map.overlays.add(anotherItemizedIconOverlay)
+                    map.invalidate()
+                } else {
+                    map.overlays.clear()
+                    anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
+                    map.overlays.add(anotherItemizedIconOverlay)
+                    map.invalidate()
+                }
+
             }
         })
 
@@ -127,9 +95,9 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
     fun dialogGps()
     {
         val locationRequest = LocationRequest.create()
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-        locationRequest.setInterval(5000)
-        locationRequest.setFastestInterval(3000)
+        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        locationRequest.interval = 5000
+        locationRequest.fastestInterval = 3000
 
         val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest).setAlwaysShow(true)
 
@@ -140,6 +108,7 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
                 try {
                     task.getResult(ApiException::class.java)
                     Toast.makeText(this@MainActivity ,"Gps is already enable" ,Toast.LENGTH_SHORT).show()
+                    startLocationService()
                 }catch (e:ApiException){
                     if (e.statusCode == LocationSettingsStatusCodes.RESOLUTION_REQUIRED)
                     {
@@ -171,17 +140,15 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
      fun isLocationServiceRunning(): Boolean {
         val activityManager =
             applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        if (activityManager != null) {
-            for (service in activityManager.getRunningServices(Int.MAX_VALUE)) {
-                if (LocationService::class.java.name == service.service.className) {
-                    if (service.foreground) {
-                        return true
-                    }
-                }
-            }
-            return false
-        }
-        return false
+         for (service in activityManager.getRunningServices(Int.MAX_VALUE)) {
+             if (LocationService::class.java.name == service.service.className) {
+                 if (service.foreground) {
+                     return true
+                 }
+             }
+         }
+         return false
+         return false
     }
 
     private fun startLocationService() {
