@@ -4,14 +4,26 @@ package com.example.osm
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Point
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.MotionEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.osm.Interfaces.OnLocationChangeListener
+import com.example.osm.databinding.ActivityMainBinding
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.*
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.Task
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -24,16 +36,22 @@ import org.osmdroid.views.overlay.OverlayItem
 
 
 open class MainActivity : AppCompatActivity(),MapEventsReceiver {
+
+    lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+
+        binding.myLocation.setOnClickListener {
+            checkGpsPermission()
+        }
 
         val overlayArray = ArrayList<OverlayItem>()
 
+
         val locationService = LocationService()
-
-        startLocationService()
-
 
         Configuration.getInstance().load(this, androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
 
@@ -48,7 +66,6 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
             override fun draw(arg0: Canvas?, arg1: MapView?, arg2: Boolean) {
                 if (overlayArray.isNotEmpty()) {
 
-                    //overlayItemArray have only ONE element only, so I hard code to get(0)
                     val `in`: GeoPoint = overlayArray[0].point as GeoPoint
                     val out = Point()
                     arg1!!.projection.toPixels(`in`, out)
@@ -58,7 +75,7 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
                     )
                     Canvas().drawBitmap(
                         bm,
-                        (out.x - bm.width / 2).toFloat(),  //shift the bitmap center
+                        (out.x - bm.width / 2).toFloat(),
                         (out.y - bm.height / 2).toFloat(),  //shift the bitmap center
                         null
                     )
@@ -107,6 +124,42 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
 
     }
 
+    fun dialogGps()
+    {
+        val locationRequest = LocationRequest.create()
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+        locationRequest.setInterval(5000)
+        locationRequest.setFastestInterval(3000)
+
+        val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest).setAlwaysShow(true)
+
+        val locationSettingsResponse = LocationServices.getSettingsClient(this).checkLocationSettings(builder.build())
+
+        locationSettingsResponse.addOnCompleteListener(object :OnCompleteListener<LocationSettingsResponse>{
+            override fun onComplete(task: Task<LocationSettingsResponse>) {
+                try {
+                    task.getResult(ApiException::class.java)
+                    Toast.makeText(this@MainActivity ,"Gps is already enable" ,Toast.LENGTH_SHORT).show()
+                }catch (e:ApiException){
+                    if (e.statusCode == LocationSettingsStatusCodes.RESOLUTION_REQUIRED)
+                    {
+                        val resolveApiException = e as ResolvableApiException
+
+                        try {
+                            resolveApiException.startResolutionForResult(this@MainActivity ,101)
+                        }catch (ex:Exception)
+                        {}
+                    }
+                    else if (e.statusCode == LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE)
+                    {
+                        Toast.makeText(this@MainActivity ,"Settings not available" ,Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+
+            }
+        })
+    }
     override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
         return true
     }
@@ -144,5 +197,59 @@ open class MainActivity : AppCompatActivity(),MapEventsReceiver {
         val intent = Intent(applicationContext, LocationService::class.java)
         intent.action = Constants.ACTION_STOP_LOCATION_SERVICE
         applicationContext.startService(intent)
+    }
+
+    private fun checkGpsPermission() {
+        if (ContextCompat.checkSelfPermission(this, arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION).toString()) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 0)
+        }
+    }
+
+    fun intentToSettings()
+    {
+
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        val uri = Uri.fromParts("package", packageName, null)
+        intent.data = uri
+        startActivity(intent)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+
+        if (requestCode == 101)
+        {
+            if (resultCode == RESULT_OK)
+            {
+                startLocationService()
+                Toast.makeText(this@MainActivity ,"Now GPS is enable" ,Toast.LENGTH_SHORT).show()
+            }
+            if (resultCode == RESULT_CANCELED)
+            {
+                Toast.makeText(this@MainActivity ,"Denied GPS enable" ,Toast.LENGTH_SHORT).show()
+            }
+
+        }
+
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == 0)
+        {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            {
+                dialogGps()
+            }
+            else if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_DENIED)
+            {
+                intentToSettings()
+            }
+
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 }
