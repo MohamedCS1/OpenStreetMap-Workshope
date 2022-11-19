@@ -4,10 +4,9 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.pm.PackageStats
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.os.RemoteException
 import android.provider.Settings
 import android.view.MotionEvent
 import android.widget.Toast
@@ -18,7 +17,6 @@ import com.example.osm.Interfaces.OnLocationChangeListener
 import com.example.osm.databinding.ActivityMainBinding
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.ResolvableApiException
-import com.google.android.gms.dynamic.IObjectWrapper
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
@@ -31,11 +29,13 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.GroundOverlay
 import org.osmdroid.views.overlay.ItemizedIconOverlay
 import org.osmdroid.views.overlay.OverlayItem
-import java.lang.reflect.Method
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 open class MainActivity : AppCompatActivity() {
 
+    lateinit var map:MapView
     lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +44,7 @@ open class MainActivity : AppCompatActivity() {
 
         var startPoint = GeoPoint(36.712051 ,3.113417)
 
-        val map = findViewById<MapView>(R.id.mapView)
+        map = findViewById<MapView>(R.id.mapView)
 
         val overlayArray = ArrayList<OverlayItem>()
 
@@ -131,9 +131,66 @@ open class MainActivity : AppCompatActivity() {
             }
         })
 
+        initRoads()
 
     }
 
+    data class Road(val startPoint: GeoPoint,val endPoint: GeoPoint)
+    fun initRoads()
+    {
+        val arrayRoads = arrayListOf<Road>()
+
+//        36.745656293901575, 3.085261079373593
+//        36.7361619121363, 3.1181317231874144
+
+//        36.76267630357551, 3.0562289972954244
+//        36.78018970134546, 3.061700601366182
+
+
+//        36.59020077074915, 3.1684451505701023
+//        36.55623602270466, 3.117592361423525
+        arrayRoads.add(Road(GeoPoint(36.76267630357551, 3.0562289972954244) , GeoPoint(36.78018970134546, 3.061700601366182)))
+
+        arrayRoads.add(Road(GeoPoint(36.7361619121363, 3.1181317231874144) ,GeoPoint(36.745656293901575, 3.085261079373593)))
+
+        val roadManager: RoadManager = OSRMRoadManager(baseContext ,"userAgent")
+        for (rod in arrayRoads)
+        {
+            val thread = Thread{
+                val road = roadManager.getRoad(arrayListOf(rod.startPoint ,rod.endPoint))
+
+                val roadOverlay = RoadManager.buildRoadOverlay(road)
+                val rnd = Random()
+                val color = Color.argb(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256))
+                roadOverlay.color = color
+
+
+                map.overlays.add(roadOverlay)
+
+
+                map.invalidate()
+            }
+            thread.start()
+
+        }
+
+//        val projection = mapView?.projection
+
+
+
+
+//        val loc = projection?.fromPixels(e!!.x.toInt(), e.y.toInt()) as GeoPoint
+
+//        val waypoints = ArrayList<GeoPoint>()
+//        waypoints.add(startPoint)
+//
+//        val endPoint = GeoPoint(loc.latitude ,loc.longitude)
+//        waypoints.add(endPoint)
+
+
+
+
+    }
 
     fun dialogGps()
     {
