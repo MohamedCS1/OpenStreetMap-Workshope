@@ -4,6 +4,8 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -16,6 +18,7 @@ import androidx.core.content.ContextCompat
 import com.example.osm.Interfaces.OnLocationChangeListener
 import com.example.osm.databinding.ActivityMainBinding
 import com.example.osm.pojo.Road
+import com.example.osm.pojo.Station
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
@@ -27,14 +30,12 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.GroundOverlay
-import org.osmdroid.views.overlay.ItemizedIconOverlay
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.OverlayItem
+import org.osmdroid.views.Projection
+import org.osmdroid.views.overlay.*
 import java.util.*
 
 
-open class MainActivity : AppCompatActivity() {
+open class MainActivity : AppCompatActivity()  {
 
     lateinit var map:MapView
     lateinit var binding: ActivityMainBinding
@@ -132,51 +133,70 @@ open class MainActivity : AppCompatActivity() {
             }
         })
 
+        initBusStations()
         initRoads()
 
-        initBusStations()
 
     }
+
 
 
     val overlayArray = ArrayList<OverlayItem>()
     var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
     fun initBusStations()
     {
-        val arrayStations = arrayListOf<GeoPoint>()
+        val arrayStations = arrayListOf<Station>()
+        val arrayStops = arrayListOf<Station>()
 
-        arrayStations.add(GeoPoint(36.72115900873567, 3.201872910092401))
-        arrayStations.add(GeoPoint(36.72376543158721, 3.198553628987393))
-        arrayStations.add(GeoPoint(36.727063840783146, 3.1905424256315666))
-        arrayStations.add(GeoPoint(36.726308665008155, 3.1839130255019095))
-        arrayStations.add(GeoPoint(36.7260686198122, 3.17713211092541))
-        arrayStations.add(GeoPoint(36.73394318066509, 3.1717060943293536))
-        arrayStations.add(GeoPoint(36.72974897319716, 3.1280050553013887))
-        arrayStations.add(GeoPoint(36.72286943815615, 3.1158171471916623))
-        arrayStations.add(GeoPoint(36.71709061901567, 3.1070629911177794))
-        arrayStations.add(GeoPoint(36.712888887113834, 3.093758976047992))
-        arrayStations.add(GeoPoint(36.708485085130405, 3.082088242933017))
-        arrayStations.add(GeoPoint(36.707521501156435, 3.078999069697306))
-        arrayStations.add(GeoPoint(36.70471926039495, 3.0750052568927986))
-        arrayStations.add(GeoPoint(36.72637981350614, 3.0888088890657484))
-        arrayStations.add(GeoPoint(36.72637981350614, 3.0888088890657484))
-        arrayStations.add(GeoPoint(36.73317673170082, 3.050180684915832))
-        arrayStations.add(GeoPoint(36.74483759456039, 3.0877021881706903))
-        arrayStations.add(GeoPoint(36.74386758797359, 3.0821157235362593))
-        arrayStations.add(GeoPoint(36.73882350665709, 3.0364589235278525))
-        arrayStations.add(GeoPoint(36.75800981395116, 3.002152015904051))
-        arrayStations.add(GeoPoint(36.77286145134548, 3.0079912609359285))
-        arrayStations.add(GeoPoint(36.77834394146806, 3.057442610879451))
+        arrayStops.add(Station("belcourt" , GeoPoint(36.75653238774928, 3.066262627281341)))
+        arrayStops.add(Station("tafourah" , GeoPoint(36.76910861533059, 3.0597641216494975)))
+
+        arrayStations.add(Station("5 Juillet" ,GeoPoint(36.72115900873567, 3.201872910092401)))
+        arrayStations.add(Station("passerelle" ,GeoPoint(36.72376543158721, 3.198553628987393)))
+        arrayStations.add(Station("soumam" ,GeoPoint(36.727063840783146, 3.1905424256315666)))
+        arrayStations.add(Station("bab ezouar" ,GeoPoint(36.726308665008155, 3.1839130255019095)))
+        arrayStations.add(Station("souk el fellah" ,GeoPoint(36.7260686198122, 3.17713211092541)))
+        arrayStations.add(Station("tamaris" ,GeoPoint(36.73394318066509, 3.1717060943293536)))
+        arrayStations.add(Station("diar djemaa" ,GeoPoint(36.72974897319716, 3.1280050553013887)))
+        arrayStations.add(Station("bachjerrah" ,GeoPoint(36.72286943815615, 3.1158171471916623)))
+        arrayStations.add(Station("bourouba" ,GeoPoint(36.71709061901567, 3.1070629911177794)))
+        arrayStations.add(Station("fleuriste" ,GeoPoint(36.712888887113834, 3.093758976047992)))
+        arrayStations.add(Station("l'poumpa" ,GeoPoint(36.708485085130405, 3.082088242933017)))
+        arrayStations.add(Station("720" ,GeoPoint(36.707521501156435, 3.078999069697306)))
+        arrayStations.add(Station("2eme arret" ,GeoPoint(36.70471926039495, 3.0750052568927986)))
+        arrayStations.add(Station("ben oumar" ,GeoPoint(36.72637981350614, 3.0888088890657484)))
+        arrayStations.add(Station("garidi" ,GeoPoint(36.72637981350614, 3.0888088890657484)))
+        arrayStations.add(Station("la cote" ,GeoPoint(36.73317673170082, 3.050180684915832)))
+        arrayStations.add(Station("ruisseau" ,GeoPoint(36.74283630833801, 3.0862451756195375)))
+        arrayStations.add(Station("el annaser" ,GeoPoint(36.74386758797359, 3.0821157235362593)))
+        arrayStations.add(Station("said hamdine" ,GeoPoint(36.73882350665709, 3.0364589235278525)))
+        arrayStations.add(Station("ben aknon" ,GeoPoint(36.75800981395116, 3.002152015904051)))
+        arrayStations.add(Station("chevally" ,GeoPoint(36.77286145134548, 3.0079912609359285)))
+        arrayStations.add(Station("alger center" ,GeoPoint(36.77834394146806, 3.057442610879451)))
 
         for (station in arrayStations)
         {
 
             val marker = Marker(map)
-            marker.title = "Any title"
+            marker.title = station.title
             marker.snippet = "This is the snippet"
             marker.subDescription = "This is sub description"
             marker.icon = getDrawable(R.drawable.ic_bus_station)
-            marker.position = GeoPoint(station.latitude , station.longitude)
+            marker.position = GeoPoint(station.location.latitude , station.location.longitude)
+            map.overlays.add(marker)
+            map.invalidate()
+            
+
+        }
+
+        for (stop in arrayStops)
+        {
+            val marker = Marker(map)
+            marker.title = stop.title
+            marker.snippet = "This is the snippet"
+            marker.subDescription = "This is sub description"
+            marker.icon = getDrawable(R.drawable.ic_bus_stop)
+            marker.position = GeoPoint(stop.location.latitude , stop.location.longitude)
             map.overlays.add(marker)
             map.invalidate()
 
@@ -189,9 +209,11 @@ open class MainActivity : AppCompatActivity() {
     {
         val arrayRoads = arrayListOf<Road>()
 
-        arrayRoads.add(Road(GeoPoint(36.76267630357551, 3.0562289972954244) , GeoPoint(36.78018970134546, 3.061700601366182)))
+//        arrayRoads.add(Road(GeoPoint(36.76267630357551, 3.0562289972954244) , GeoPoint(36.78018970134546, 3.061700601366182)))
 
-        arrayRoads.add(Road(GeoPoint(36.7361619121363, 3.1181317231874144) ,GeoPoint(36.745656293901575, 3.085261079373593)))
+//        arrayRoads.add(Road(GeoPoint(36.7361619121363, 3.1181317231874144) ,GeoPoint(36.745656293901575, 3.085261079373593)))
+
+        arrayRoads.add(Road(GeoPoint(36.74283630833801, 3.0862451756195375) ,GeoPoint(36.77834394146806, 3.057442610879451)))
 
         val roadManager: RoadManager = OSRMRoadManager(baseContext ,"userAgent")
         for (rod in arrayRoads)
@@ -199,10 +221,10 @@ open class MainActivity : AppCompatActivity() {
             val thread = Thread{
                 val road = roadManager.getRoad(arrayListOf(rod.startPoint ,rod.endPoint))
 
-                val roadOverlay = RoadManager.buildRoadOverlay(road)
-                val rnd = Random()
-                val color = Color.argb(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256))
-                roadOverlay.color = color
+                val roadOverlay = RoadManager.buildRoadOverlay(road ,Color.RED ,10f)
+//                val rnd = Random()
+//                val color = Color.argb(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256))
+//                roadOverlay.color = color
 
 
                 map.overlays.add(roadOverlay)
@@ -351,4 +373,14 @@ open class MainActivity : AppCompatActivity() {
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
+
+    override fun onPause() {
+        super<AppCompatActivity>.onPause()
+    }
+
+    override fun onResume() {
+        super<AppCompatActivity>.onResume()
+    }
+
+
 }
