@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Canvas
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -30,8 +30,9 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.Projection
 import org.osmdroid.views.overlay.*
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.util.*
 
 
@@ -91,6 +92,14 @@ open class MainActivity : AppCompatActivity()  {
 
         binding.myLocation.setOnClickListener {
             checkGpsPermission()
+
+            val myLocationNewOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this@MainActivity) ,map)
+            myLocationNewOverlay.enableMyLocation()
+            val drawable = ContextCompat.getDrawable(this , R.drawable.ic_location)
+            val personalIcon = Bitmap.createBitmap(drawable!!.intrinsicWidth ,drawable.intrinsicHeight ,Bitmap.Config.ARGB_8888)
+            myLocationNewOverlay.setPersonIcon(personalIcon)
+            map.overlays.add(myLocationNewOverlay)
+            map.invalidate()
         }
 
 
@@ -103,39 +112,36 @@ open class MainActivity : AppCompatActivity()  {
 
         Configuration.getInstance().load(this, androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
 
-
-
         val overlayArray = ArrayList<OverlayItem>()
         var anotherItemizedIconOverlay: ItemizedIconOverlay<OverlayItem>? = null
 
         locationService.onLocationChange(object :OnLocationChangeListener{
-            override fun onLocationChange(long:String ,lat:String) {
+            override fun onLocationChange(long:String ,lat:String ,bearing:Float) {
 
-                overlayArray.clear()
-
-                startPoint = GeoPoint(lat.toDouble() ,long.toDouble())
-
-                val marker = getDrawable(R.drawable.ic_location)
-                anotherItemizedIconOverlay?.removeAllItems()
-                val mapItem = OverlayItem("", "", GeoPoint(lat.toDouble() , long.toDouble()))
-                mapItem.setMarker(marker)
-                overlayArray.add(mapItem)
-                if (anotherItemizedIconOverlay == null) {
-                    anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
-                    map.overlays.add(anotherItemizedIconOverlay)
-                    map.invalidate()
-                } else {
-                    anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
-                    map.overlays.add(anotherItemizedIconOverlay)
-                    map.invalidate()
-                }
+//                overlayArray.clear()
+//
+//                startPoint = GeoPoint(lat.toDouble() ,long.toDouble())
+//
+//                val marker = getDrawable(R.drawable.ic_location)
+//                anotherItemizedIconOverlay?.removeAllItems()
+//                val mapItem = OverlayItem("", "", GeoPoint(lat.toDouble() , long.toDouble()))
+//                mapItem.setMarker(marker)
+//                overlayArray.add(mapItem)
+//                if (anotherItemizedIconOverlay == null) {
+//                    anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
+//                    map.overlays.add(anotherItemizedIconOverlay)
+//                    map.invalidate()
+//                } else {
+//                    anotherItemizedIconOverlay = ItemizedIconOverlay(applicationContext, overlayArray, null)
+//                    map.overlays.add(anotherItemizedIconOverlay)
+//                    map.invalidate()
+//                }
 
             }
         })
 
         initBusStations()
         initRoads()
-
 
     }
 
@@ -209,10 +215,6 @@ open class MainActivity : AppCompatActivity()  {
     {
         val arrayRoads = arrayListOf<Road>()
 
-//        arrayRoads.add(Road(GeoPoint(36.76267630357551, 3.0562289972954244) , GeoPoint(36.78018970134546, 3.061700601366182)))
-
-//        arrayRoads.add(Road(GeoPoint(36.7361619121363, 3.1181317231874144) ,GeoPoint(36.745656293901575, 3.085261079373593)))
-
         arrayRoads.add(Road(GeoPoint(36.74283630833801, 3.0862451756195375) ,GeoPoint(36.77834394146806, 3.057442610879451)))
 
         val roadManager: RoadManager = OSRMRoadManager(baseContext ,"userAgent")
@@ -229,8 +231,9 @@ open class MainActivity : AppCompatActivity()  {
 
                 map.overlays.add(roadOverlay)
 
-
-                map.invalidate()
+                runOnUiThread {
+                    map.invalidate()
+                }
             }
             thread.start()
 

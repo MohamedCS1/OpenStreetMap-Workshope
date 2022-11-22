@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:background="@color/white"
         android:padding="5dp"
-        android:src="@drawable/ic_my_location"
+        android:src="@drawable/ic_location"
         android:layout_margin="30dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

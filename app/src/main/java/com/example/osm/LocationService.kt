@@ -26,11 +26,12 @@ class LocationService : Service() {
             super.onLocationResult(locationResult)
             val latitude = locationResult.lastLocation.latitude
             val longitude = locationResult.lastLocation.longitude
+            val bearing = locationResult.lastLocation.bearing
             Toast.makeText(
                 applicationContext,
                 "Longitude -> $longitude Latitude -> $latitude", Toast.LENGTH_SHORT
             ).show()
-            onLocationChangeListener?.onLocationChange(longitude.toString() ,latitude.toString())
+            onLocationChangeListener?.onLocationChange(longitude.toString() ,latitude.toString() ,bearing)
 //            locationResult.locations.last().bearing
         }
     }
