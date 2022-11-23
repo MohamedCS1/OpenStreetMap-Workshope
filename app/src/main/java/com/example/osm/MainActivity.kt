@@ -31,6 +31,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.*
+import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.util.*
@@ -97,7 +98,7 @@ open class MainActivity : AppCompatActivity()  {
             myLocationNewOverlay.enableMyLocation()
             val drawable = ContextCompat.getDrawable(this , R.drawable.ic_location)
             val personalIcon = Bitmap.createBitmap(drawable!!.intrinsicWidth ,drawable.intrinsicHeight ,Bitmap.Config.ARGB_8888)
-            myLocationNewOverlay.setPersonIcon(personalIcon)
+//            myLocationNewOverlay.setPersonIcon(personalIcon)
             map.overlays.add(myLocationNewOverlay)
             map.invalidate()
         }
