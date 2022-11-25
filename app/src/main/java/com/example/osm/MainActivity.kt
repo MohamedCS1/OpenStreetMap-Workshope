@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.location.Location
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -33,6 +34,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.*
 import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.IMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.util.*
 
@@ -50,6 +52,8 @@ open class MainActivity : AppCompatActivity()  {
 
         map = findViewById<MapView>(R.id.mapView)
 
+        map.minZoomLevel = 6.5
+        map.controller.setCenter(GeoPoint(36.712051 ,3.113417))
 
         val overlay = object : GroundOverlay() {
             override fun onSingleTapConfirmed(e: MotionEvent?, mapView: MapView?): Boolean {
@@ -91,14 +95,17 @@ open class MainActivity : AppCompatActivity()  {
         map.overlays.add(overlay)
         map.invalidate()
 
+        val myLocationNewOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this) ,map)
+        myLocationNewOverlay.enableMyLocation()
+
         binding.myLocation.setOnClickListener {
             checkGpsPermission()
 
-            val myLocationNewOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this@MainActivity) ,map)
-            myLocationNewOverlay.enableMyLocation()
-            val drawable = ContextCompat.getDrawable(this , R.drawable.ic_location)
-            val personalIcon = Bitmap.createBitmap(drawable!!.intrinsicWidth ,drawable.intrinsicHeight ,Bitmap.Config.ARGB_8888)
-//            myLocationNewOverlay.setPersonIcon(personalIcon)
+            val personalIcon = BitmapFactory.decodeResource(resources ,
+                R.drawable.ic_my_location)
+            myLocationNewOverlay.setPersonIcon(personalIcon)
+            map.controller.zoomTo(10.0)
+            map.controller.animateTo(GeoPoint(myLocationNewOverlay.mMyLocationProvider.lastKnownLocation.latitude , myLocationNewOverlay.mMyLocationProvider.lastKnownLocation.longitude.toDouble()))
             map.overlays.add(myLocationNewOverlay)
             map.invalidate()
         }
