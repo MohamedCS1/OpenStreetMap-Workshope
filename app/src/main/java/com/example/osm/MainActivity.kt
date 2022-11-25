@@ -4,10 +4,10 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.location.Location
+import android.graphics.drawable.BitmapDrawable
+import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -16,6 +16,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.drawable.toBitmap
 import com.example.osm.Interfaces.OnLocationChangeListener
 import com.example.osm.databinding.ActivityMainBinding
 import com.example.osm.pojo.Road
@@ -32,9 +34,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.*
-import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.IMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.util.*
 
@@ -101,15 +101,15 @@ open class MainActivity : AppCompatActivity()  {
         binding.myLocation.setOnClickListener {
             checkGpsPermission()
 
-            val personalIcon = BitmapFactory.decodeResource(resources ,
-                R.drawable.ic_my_location)
+            val personalIcon = ResourcesCompat.getDrawable(resources ,
+                R.drawable.ic_my_location,null)?.toBitmap(100,100)
+            myLocationNewOverlay.setDirectionIcon(personalIcon)
             myLocationNewOverlay.setPersonIcon(personalIcon)
             map.controller.zoomTo(10.0)
             map.controller.animateTo(GeoPoint(myLocationNewOverlay.mMyLocationProvider.lastKnownLocation.latitude , myLocationNewOverlay.mMyLocationProvider.lastKnownLocation.longitude.toDouble()))
             map.overlays.add(myLocationNewOverlay)
             map.invalidate()
         }
-
 
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
